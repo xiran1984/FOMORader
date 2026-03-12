@@ -17,7 +17,7 @@ DEFAULT_MAX_ITEMS = 100     # Max items per run
 
 # Output Configuration
 SUMMARY_MAX_CHARS = 300
-OUTPUT_FILE = "../data/hotspots_raw.json"
+OUTPUT_FILE = "data/hotspots_raw.json"
 
 def build_query(min_faves: int = DEFAULT_MIN_FAVES, min_retweets: int = DEFAULT_MIN_RETWEETS) -> str:
     """Build advanced search query for high-quality AI tweets."""

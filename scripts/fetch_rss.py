@@ -33,7 +33,7 @@ RSS_SOURCES = [
     {"name": "Anthropic News",        "url": "https://www.anthropic.com/news/rss",                                    "source_weight": 1.0},
     {"name": "Google DeepMind",       "url": "https://deepmind.google/blog/rss.xml",                                  "source_weight": 1.0},
     {"name": "Meta AI",               "url": "https://ai.meta.com/blog/rss/",                                         "source_weight": 0.95},
-    {"name": "Hugging Face Blog",     "url": "https://huggingface.co/blog/feed.xml",                                  "source_weight": 0.90},
+
     {"name": "Microsoft AI",          "url": "https://blogs.microsoft.com/ai/feed/",                                  "source_weight": 0.90},
     {"name": "AWS Machine Learning",  "url": "https://aws.amazon.com/blogs/machine-learning/feed/",                   "source_weight": 0.85},
     # 精选周刊（信噪比高）
@@ -280,6 +280,33 @@ def fetch_all(days: int, apply_filter: bool) -> list[dict]:
 
 
 # ──────────────────────────────────────────────
+# 数据合并功能（与x-collector保持一致）
+# ──────────────────────────────────────────────
+def merge_into(existing_path: Path, new_items: list[dict]) -> tuple[list[dict], int]:
+    """Merge new items into existing JSON file, avoiding duplicates by URL."""
+    existing = []
+    if existing_path.exists():
+        try:
+            existing = json.loads(existing_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    url_map = {item["url"]: item for item in existing}
+    added = 0
+    for item in new_items:
+        if item["url"] not in url_map:
+            url_map[item["url"]] = item
+            added += 1
+
+    # Sort by published_at desc
+    merged = sorted(
+        url_map.values(),
+        key=lambda x: x.get("published_at") or "",
+        reverse=True,
+    )
+    return merged, added
+
+# ──────────────────────────────────────────────
 # 入口
 # ──────────────────────────────────────────────
 def main():
@@ -298,13 +325,21 @@ def main():
         print(f"\n（dry-run 模式，仅展示前3条，共 {len(items)} 条）")
         return
 
+    # 保存到文件（支持合并）
+    project_root = Path(__file__).resolve().parents[1]
     out_path = Path(args.out)
+    if not out_path.is_absolute():
+        out_path = (project_root / out_path).resolve()
+    
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    merged, added = merge_into(out_path, items)
+
     out_path.write_text(
-        json.dumps(items, ensure_ascii=False, indent=2),
+        json.dumps(merged, ensure_ascii=False, indent=2),
         encoding="utf-8"
     )
     print(f"✅ 已写入 → {out_path}  ({out_path.stat().st_size // 1024} KB)")
+    print(f"   新增 {added} 条，总计 {len(merged)} 条")
 
 
 if __name__ == "__main__":

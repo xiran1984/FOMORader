@@ -70,10 +70,10 @@ def main():
         return
 
     # 4. Save
-    out_path = Path(args.out).resolve()
-    # Handle relative path from script execution location
+    project_root = Path(__file__).resolve().parents[2]
+    out_path = Path(args.out)
     if not out_path.is_absolute():
-         out_path = Path(process.cwd()) / args.out
+        out_path = (project_root / out_path).resolve()
          
     out_path.parent.mkdir(parents=True, exist_ok=True)
     merged, added = merge_into(out_path, processed_items)
