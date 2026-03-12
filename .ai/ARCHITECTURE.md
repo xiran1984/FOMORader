@@ -12,8 +12,12 @@ fomorader/
 │   └── TODO.md                   # 任务看板
 ├── scripts/
 │   ├── fetch_rss.py              # RSS 爬取 → data/hotspots_raw.json
-│   ├── fetch_x_twitterapi.py     # X 爬取 → 合并到 data/hotspots_raw.json
-│   └── seed.ts                   # JSON → SQLite (data/fomorader.db)
+│   ├── seed.ts                   # JSON → SQLite (data/fomorader.db)
+│   └── x-collector/              # X 采集模块 (twitterapi.io)
+│       ├── config.py             # 配置与API Key
+│       ├── collector.py          # API 调用封装
+│       ├── filter.py             # 数据清洗与去重
+│       └── main.py               # 入口 → data/hotspots_raw.json
 ├── services/
 │   ├── llm.ts                    # LLM 适配层（Qwen / DeepSeek 切换）
 │   └── scorer.ts                 # 评分引擎（读 hotspots，写 scores）
@@ -35,7 +39,7 @@ fomorader/
 ```
 [RSS 源] ──────────────────────────────────┐
                                            ▼
-                               fetch_rss.py / fetch_x_twitterapi.py
+                               fetch_rss.py / x-collector/main.py
                                            │
                                            ▼
                                data/hotspots_raw.json

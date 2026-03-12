@@ -47,9 +47,9 @@
 
 ---
 
-## RSS 数据源：10个国际 AI 源（而非国内平台）
+## RSS 数据源：9个国际 AI 源（而非国内平台）
 **决策时间**：v0.3
-**选择**：OpenAI / Anthropic / DeepMind / HuggingFace 等英文一手源
+**选择**：OpenAI / Anthropic / DeepMind / TechCrunch 等英文一手源
 **原因**：
 - 中文 AI 内容 90% 是英文源的二手加工，信息密度低
 - 国内平台（小红书/微博）反爬严重，维护成本高
