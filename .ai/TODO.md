@@ -16,42 +16,29 @@
 
 ---
 
-## 🔄 进行中
-
 - [x] 阶段一端到端验证（fetch → seed → DB 数据确认）
 
 ---
 
-## 📋 待办（阶段二）
+## ✅ 已完成
+- [x] 评分功能验证与测试
+- [x] `services/llm.ts`：Qwen 32B 适配层，统一接口
+- [x] `services/scorer.ts`：评分引擎 (含 cache、dedupe、author/title_zh 提取)
+- [x] 前端三栏布局：HotspotList / RadarStream (Top Rated) / ScoreCard
+- [x] 交互优化：点击标题/作者跳转，中文标题优先展示
+- [x] `npm run refresh` 一键刷新
+- [x] `npm run score` 批量评分
 
-- [ ] `services/llm.ts`：Qwen / DeepSeek 适配层，统一接口
-- [ ] `services/scorer.ts`：评分引擎
-    - 读取未评分的 hotspots
-    - 调用 LLM，注入 RULES 权重
-    - 写入 scores 表
-    - 写入 cache 表（url + model + rules_version）
-    - 输出摘要 ≤200字
+---
+
+## 📋 待办（阶段二）
+- [ ] 趋势预测视觉化（trend_signal: rising / stable / fading）
+- [ ] 点击热点 → 触发评分 → 动画展示（当前已改为预先批量评分）
 
 ---
 
 ## 📋 待办（阶段三）
-
-- [ ] 前端三栏布局：HotspotList / RadarStream / ScoreCard
-- [ ] 点击热点 → 触发评分 → 动画展示 → 结果缓存
-- [ ] 趋势预测视觉化（trend_signal: rising / stable / fading）
-
----
-
-## 📋 待办（阶段四）
-
-- [ ] `npm run refresh` 一键刷新（Python 爬取 + TS 入库）
-- [ ] `npm run score` 批量评分
 - [ ] README 更新
-
----
-
-## 🚫 暂时搁置
-
-- [ ] 知乎 / 微博热榜接入（等 DailyHotApi 部署完成）
-- [ ] 自动推送功能（阶段四后评估）
-- [ ] 用户反馈系统（RULES 明确：反馈只记录，不影响当前版本权重）
+- [ ] 知乎 / 微博热榜接入
+- [ ] 自动推送功能
+- [ ] 用户反馈系统

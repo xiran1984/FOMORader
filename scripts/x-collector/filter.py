@@ -6,6 +6,17 @@ import re
 from datetime import datetime, timezone
 from config import SUMMARY_MAX_CHARS
 
+_TEXT_TRANSLATION_TABLE = str.maketrans({
+    "\u2028": "\n",
+    "\u2029": "\n",
+    "\u0085": "\n",
+})
+
+
+def normalize_text(text: str) -> str:
+    return (text or "").translate(_TEXT_TRANSLATION_TABLE)
+
+
 def make_id(tweet_id: str) -> str:
     return hashlib.sha256(str(tweet_id).encode()).hexdigest()[:8]
 
@@ -39,7 +50,7 @@ def normalize_tweet(raw: dict) -> dict | None:
     Returns None if the tweet should be filtered out.
     """
     tweet_id = str(raw.get("id") or raw.get("tweet_id") or "")
-    text = raw.get("text") or raw.get("full_text") or ""
+    text = normalize_text(raw.get("text") or raw.get("full_text") or "")
     author = raw.get("author") or raw.get("user") or {}
     username = (
         author.get("userName")

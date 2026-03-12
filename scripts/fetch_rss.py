@@ -23,6 +23,17 @@ from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
+_TEXT_TRANSLATION_TABLE = str.maketrans({
+    "\u2028": "\n",
+    "\u2029": "\n",
+    "\u0085": "\n",
+})
+
+
+def normalize_text(text: str) -> str:
+    return (text or "").translate(_TEXT_TRANSLATION_TABLE)
+
+
 # ──────────────────────────────────────────────
 # RSS 源配置（含来源权重）
 # source_weight 直接传入 hotspots 表，作为评分"平台分"基础值
@@ -115,7 +126,7 @@ def make_id(url: str) -> str:
 
 def strip_html(raw: str) -> str:
     text = BeautifulSoup(raw or "", "html.parser").get_text(separator=" ")
-    return re.sub(r"\s+", " ", text).strip()
+    return normalize_text(re.sub(r"\s+", " ", text).strip())
 
 
 def to_utc_iso(entry) -> str | None:
@@ -134,7 +145,7 @@ def extract_summary(entry) -> str:
         raw = entry["summary"]
     else:
         raw = entry.get("title", "")
-    return strip_html(raw)[:SUMMARY_MAX_CHARS]
+    return normalize_text(strip_html(raw)[:SUMMARY_MAX_CHARS])
 
 
 def extract_tags(title: str, source_name: str) -> list[str]:
@@ -201,7 +212,7 @@ def fetch_source(
 
     for entry in feed.entries:
         link  = entry.get("link", "").strip()
-        title = strip_html(entry.get("title", "")).strip()
+        title = normalize_text(strip_html(entry.get("title", "")).strip())
 
         if not link or not title:
             continue
@@ -215,7 +226,7 @@ def fetch_source(
                 continue
 
         stats["total"] += 1
-        summary = extract_summary(entry)
+        summary = normalize_text(extract_summary(entry))
 
         # 质量筛选
         if apply_filter:
@@ -286,10 +297,14 @@ def merge_into(existing_path: Path, new_items: list[dict]) -> tuple[list[dict], 
     """Merge new items into existing JSON file, avoiding duplicates by URL."""
     existing = []
     if existing_path.exists():
+        existing_text = existing_path.read_text(encoding="utf-8")
         try:
-            existing = json.loads(existing_path.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+            existing = json.loads(existing_text)
+        except json.JSONDecodeError:
+            existing_text = existing_path.read_text(encoding="utf-8-sig")
+            existing = json.loads(existing_text)
+        if not isinstance(existing, list):
+            raise ValueError(f"Invalid JSON structure in {existing_path}: expected an array.")
 
     url_map = {item["url"]: item for item in existing}
     added = 0

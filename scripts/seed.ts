@@ -65,6 +65,9 @@ const SCHEMA = `
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         hotspot_id TEXT,
         model_version TEXT,
+        platform_score REAL,
+        creator_score REAL,
+        content_score REAL,
         originality REAL,
         accuracy REAL,
         depth REAL,
@@ -100,6 +103,8 @@ function main() {
     console.log(`   DB Path:    ${DEFAULT_DB_PATH}`);
     console.log(`   Input Path: ${inputPath}`);
 
+    fs.mkdirSync(path.dirname(DEFAULT_DB_PATH), { recursive: true });
+
     // 1. 连接数据库
     const db = new Database(DEFAULT_DB_PATH);
     
@@ -126,7 +131,9 @@ function main() {
 
     let rawData: HotspotRaw[] = [];
     try {
-        const fileContent = fs.readFileSync(inputPath, 'utf-8');
+        let fileContent = fs.readFileSync(inputPath, 'utf-8');
+        fileContent = fileContent.replace(/^\uFEFF/, '');
+        fileContent = fileContent.replace(/\u2028|\u2029|\u0085/g, '\n');
         rawData = JSON.parse(fileContent);
     } catch (err) {
         console.error(`❌ Failed to parse JSON: ${err}`);
@@ -197,6 +204,9 @@ function main() {
         console.error(`❌ Transaction failed: ${err}`);
         process.exit(1);
     }
+
+    const totalHotspots = db.prepare(`SELECT COUNT(1) AS c FROM hotspots`).get() as { c: number };
+    console.log(`📌 DB hotspots count: ${totalHotspots.c}`);
 
     // 6. 打印统计
     console.log(`\n📊 Source Statistics:`);

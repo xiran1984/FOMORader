@@ -4,6 +4,26 @@
 
 ---
 
+## [v0.4] 2026-03-12
+### 新增
+- **数据库 schema 升级**：`scores` 表新增 `author`, `author_url`, `summary_zh`, `title_zh`, `scored_at`, `trend_signal` 字段，支持中文标题和作者信息提取。
+- **LLM 增强**：
+  - `fetch_rss.py`：接入 LLM API，爬取时将英文标题自动翻译为中文。
+  - `services/llm.ts`：Prompt 优化，增加中文标题生成 (`title_zh`)，并强制提取 X Handle 作为作者名（如 `@Saccc_c`）。
+  - **语义去重**：`dedupeHotspot` 逻辑升级，增加“语义高度重合”判断，相似度粗筛阈值提升至 0.45，减少重复新闻。
+  - **模型升级**：默认模型切换回 `Qwen/Qwen2.5-32B-Instruct`，提升指令遵循能力和评分准确性。
+- **前端优化**：
+  - **Top Rated**：逻辑调整为按分数降序展示前 20 条（不再硬性过滤 >= 7 分）。
+  - **交互增强**：点击标题直接跳转原文（新标签页），点击作者名跳转作者主页（针对 X 平台）。
+  - **视觉优化**：统一时间格式为 `MM/DD HH:mm`，支持优先显示中文标题。
+- **项目管理**：`.gitignore` 新增 `.trae/` 忽略项。
+
+### 变更
+- `services/scorer.ts`：支持自动迁移旧表结构（`ensureScoresSchema`），写入逻辑适配新字段。
+- `server/index.ts`：API 返回数据包含新增字段。
+
+---
+
 ## [v0.3] 2026-03-11
 ### 新增
 - `fetch_x_twitterapi.py`：接入 twitterapi.io，三层质量筛选（搜索层 min_faves/min_retweets + 排序层 Top + 本地中文字符过滤）

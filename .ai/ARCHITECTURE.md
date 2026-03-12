@@ -86,29 +86,34 @@ fomorader/
 |------|------|------|
 | id | INTEGER PK | 自增 |
 | hotspot_id | TEXT FK | → hotspots.id |
-| model_version | TEXT | 'qwen-2.5-72b' 等 |
+| model_version | TEXT | 'qwen-2.5-7b' 等 |
+| platform_score | REAL | 平台分 0-10 |
+| creator_score | REAL | 创作者分 0-10 |
+| content_score | REAL | 内容分 0-10 |
 | originality | REAL | 原创 |
 | accuracy | REAL | 准确 |
 | depth | REAL | 深度 |
 | engagement | REAL | 互动 |
 | neutrality | REAL | 中立 |
-| total_score | REAL | 加权总分 0-10 |
+| total_score | REAL | 加权总分 0-10（按 RULES.md 的平台/创作者/内容权重计算） |
 | summary_zh | TEXT | AI 中文摘要（200字内） |
+| title_zh | TEXT | AI 中文标题 |
 | trend_signal | TEXT | 'rising'/'stable'/'fading' |
 | scored_at | TEXT | 评分时间 |
+| author | TEXT | 作者名称 |
+| author_url | TEXT | 作者主页链接 |
 
 ### cache（LLM 调用缓存）
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | key | TEXT PK | url + ':' + model_version + ':' + rules_version |
-| value | TEXT | JSON 评分结果 |
-| created_at | TEXT | 缓存时间 |
+| value | TEXT | JSON 评分结果（包含 platform_score / creator_score / content_score 等用于复用的中间值） |
 
 ## 模块职责边界
 | 模块 | 只能做 | 不能做 |
 |------|--------|--------|
-| fetch_rss.py | 爬取→写 JSON | 直接写数据库 |
-| fetch_x_twitterapi.py | 爬取→合并 JSON | 直接写数据库 |
+| fetch_rss.py | 爬取→写 JSON |
+| x-collector | 爬取→合并 JSON |
 | seed.ts | 读 JSON→写 hotspots | 触发评分、修改表结构 |
 | scorer.ts | 读 hotspots→写 scores+cache | 修改 hotspots |
 | 前端 | 只读数据库 | 写数据库、调 LLM |

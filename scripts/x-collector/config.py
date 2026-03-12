@@ -11,9 +11,9 @@ API_BASE = "https://api.twitterapi.io"
 API_KEY = os.getenv("TWITTERAPI_KEY", "").strip()
 
 # Quality Filter Defaults
-DEFAULT_MIN_FAVES = 50      # Minimum likes to consider valuable
+DEFAULT_MIN_FAVES = 25      # Minimum likes to consider valuable
 DEFAULT_MIN_RETWEETS = 10   # Minimum retweets
-DEFAULT_MAX_ITEMS = 100     # Max items per run
+DEFAULT_MAX_ITEMS = 50     # Max items per run
 
 # Output Configuration
 SUMMARY_MAX_CHARS = 300

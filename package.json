@@ -1,13 +1,36 @@
 {
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"vite\"",
+    "client": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "server": "tsx watch server/index.ts",
+    "refresh": "python scripts/fetch_rss.py && python scripts/x-collector/main.py && npx tsx scripts/seed.ts",
+    "score": "npx tsx services/scorer.ts --limit 999999"
+  },
   "dependencies": {
+    "@hono/node-server": "^1.19.11",
+    "@tailwindcss/postcss": "^4.2.1",
     "autoprefixer": "^10.4.27",
     "better-sqlite3": "^12.6.2",
+    "dotenv": "^17.3.1",
+    "hono": "^4.12.7",
     "lucide-react": "^0.577.0",
+    "openai": "^6.27.0",
     "postcss": "^8.5.8",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
-    "tsx": "^4.21.0"
+    "@types/node": "^25.4.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
   }
 }

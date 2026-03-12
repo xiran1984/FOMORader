@@ -17,10 +17,14 @@ def merge_into(existing_path: Path, new_items: list[dict]) -> tuple[list[dict], 
     """Merge new items into existing JSON file, avoiding duplicates by URL."""
     existing = []
     if existing_path.exists():
+        existing_text = existing_path.read_text(encoding="utf-8")
         try:
-            existing = json.loads(existing_path.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+            existing = json.loads(existing_text)
+        except json.JSONDecodeError:
+            existing_text = existing_path.read_text(encoding="utf-8-sig")
+            existing = json.loads(existing_text)
+        if not isinstance(existing, list):
+            raise ValueError(f"Invalid JSON structure in {existing_path}: expected an array.")
 
     url_map = {item["url"]: item for item in existing}
     added = 0
