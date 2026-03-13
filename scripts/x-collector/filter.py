@@ -24,9 +24,17 @@ def to_utc_iso(dt_str: str | None) -> str | None:
     if not dt_str:
         return None
     try:
-        dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        # 1. Try ISO format (e.g. 2026-03-12T20:30:00.000Z)
+        if 'T' in dt_str:
+            dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+            return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        
+        # 2. Try Twitter format (e.g. Thu Mar 12 23:50:31 +0000 2026)
+        # Format: %a %b %d %H:%M:%S %z %Y
+        dt = datetime.strptime(dt_str, "%a %b %d %H:%M:%S %z %Y")
         return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
     except Exception:
+        # Fallback: return as-is if parsing fails
         return dt_str
 
 def is_chinese(text: str, min_chars: int = 5) -> bool:

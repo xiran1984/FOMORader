@@ -17,6 +17,7 @@ export interface Hotspot {
   trend_signal?: string;
   author?: string;
   author_url?: string;
-  summary_zh?: string;
+  is_favorite?: boolean;
+}  summary_zh?: string;
   title_zh?: string;
 }

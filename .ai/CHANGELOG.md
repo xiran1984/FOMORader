@@ -4,6 +4,54 @@
 
 ---
 
+## [v0.6] 2026-03-13
+### 新增
+- **High Score Vault (高分金库)**：
+  - 前端：三栏布局右侧新增“Score ≥ 7.0”专栏，专门展示高价值内容。
+  - 数据保护：修改 `seed.ts` 清理逻辑，永久保留分数 ≥ 7.0 的内容，以及每日最高分（Daily Max）和已收藏内容，不受 300 条总数限制。
+  - API：优化 `/api/hotspots` 查询逻辑，使用 UNION 策略确保高分内容即使发布时间较早也能被前端获取。
+- **收藏功能 (Favorites)**：
+  - 交互：Top Rated 和 Vault 栏目新增 ⭐ 收藏按钮，支持乐观 UI 更新和点击动画。
+  - 持久化：数据库 `hotspots` 表新增 `is_favorite` 字段，收藏内容永久免删。
+  - 接口：新增 `POST /api/hotspots/:id/favorite` 用于状态切换。
+- **推送去重 (Push History)**：
+  - 数据库新增 `push_history` 表，记录已推送的 `hotspot_id`。
+  - `notifier.ts` 推送前检查历史记录，彻底解决重复推送问题。
+- **并发写入隔离**：
+  - 采集端拆分为 `hotspots_x.json` 和 `hotspots_rss.json`，避免多进程写入冲突。
+  - `seed.ts` 升级为多源合并模式。
+
+### 优化
+- **界面布局**：
+  - 升级为 `1:2:1` 三栏布局（Latest - Top Rated - Vault）。
+  - 将时间筛选器（All Time / Last 24h）移至中间列标题栏，优化交互体验。
+  - 统一 Latest Feed 的卡片样式与 RadarStream 一致。
+- **日期显示**：修复 Latest Feed 中因字段错误导致的 "Invalid Date" 问题，统一使用 `published_at`。
+
+---
+
+## [v0.5] 2026-03-13
+### 新增
+- **自动化调度系统**：
+  - 引入 `node-schedule` 实现全自动任务流：每日 08:00 (X 抓取) / 每周日 08:00 (RSS 抓取)。
+  - `server/scheduler.ts`：支持热更新配置，修改时间无需重启。
+- **飞书集成**：
+  - `services/notifier.ts`：每日自动推送 Top N 高分内容至飞书群。
+  - 交互式卡片：支持中文摘要、分数高亮、发布时间展示及原文跳转。
+- **前端设置中心**：
+  - ⚙️ Settings 面板：支持自定义每日推送时间及推送条数 (5-30 条)。
+  - 🔄 手动触发：新增 "Update Now" 按钮，支持异步触发抓取+打分流，具备动态状态轮询。
+  - ⏳ 筛选功能：新增 "Last 24h" 按钮，一键过滤近期热点。
+
+### 修复与优化
+- **时区一致性**：`x-collector` 切换为 UTC 时间窗口，解决跨时区数据漏抓问题。
+- **时间标准化**：
+  - 修复 Twitter 原始时间解析逻辑，统一为 ISO 8601。
+  - SQL 查询引入 `datetime()` 函数并使用 `ROW_NUMBER` 优化，彻底解决排序混乱和重复打分显示问题。
+- **采集策略调整**：移除 X 采集的热度门槛 (`min_faves`/`min_rt` 设为 0)，侧重早期高价值信息捕获。
+
+---
+
 ## [v0.4] 2026-03-12
 ### 新增
 - **数据库 schema 升级**：`scores` 表新增 `author`, `author_url`, `summary_zh`, `title_zh`, `scored_at`, `trend_signal` 字段，支持中文标题和作者信息提取。

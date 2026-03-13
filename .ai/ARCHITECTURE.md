@@ -11,24 +11,28 @@ fomorader/
 │   ├── DECISIONS.md              # 技术决策记录
 │   └── TODO.md                   # 任务看板
 ├── scripts/
-│   ├── fetch_rss.py              # RSS 爬取 → data/hotspots_raw.json
-│   ├── seed.ts                   # JSON → SQLite (data/fomorader.db)
+│   ├── fetch_rss.py              # RSS 爬取 → data/hotspots_rss.json
+│   ├── seed.ts                   # JSON (x/rss) → SQLite (data/fomorader.db)
 │   └── x-collector/              # X 采集模块 (twitterapi.io)
 │       ├── config.py             # 配置与API Key
 │       ├── collector.py          # API 调用封装
 │       ├── filter.py             # 数据清洗与去重
-│       └── main.py               # 入口 → data/hotspots_raw.json
+│       └── main.py               # 入口 → data/hotspots_x.json
 ├── services/
 │   ├── llm.ts                    # LLM 适配层（Qwen / DeepSeek 切换）
-│   └── scorer.ts                 # 评分引擎（读 hotspots，写 scores）
+│   ├── scorer.ts                 # 评分引擎（读 hotspots，写 scores）
+│   └── notifier.ts               # 推送引擎（读取高分数据 → 飞书 Webhook）
+├── server/
+│   ├── index.ts                  # Hono 后端 (API + Scheduler)
+│   └── scheduler.ts              # 定时任务调度器 (node-schedule)
 ├── src/                          # React 前端（Vite + TypeScript）
 │   ├── components/
 │   │   ├── HotspotList.tsx       # 左侧热点列表
 │   │   ├── RadarStream.tsx       # 中间雷达扫描流（核心视觉）
-│   │   └── ScoreCard.tsx         # 右侧评分卡片
 │   └── App.tsx
 ├── data/
-│   ├── hotspots_raw.json         # 爬取结果（gitignore）
+│   ├── hotspots_rss.json         # 过滤后的 RSS 数据（gitignore）
+│   ├── hotspots_x.json           # 过滤后的 X 数据（gitignore）
 │   └── fomorader.db              # SQLite 数据库（gitignore）
 ├── .env                          # 密钥（gitignore）
 ├── RULES.md                      # 项目宪法（根目录副本）
@@ -62,7 +66,14 @@ fomorader/
                                │
                                ▼
                           React 前端
-                  HotspotList / RadarStream / ScoreCard
+                  HotspotList / RadarStream
+                               │
+                               ▼
+                       [推送系统]
+                  node-schedule → notifier.ts
+                               │
+                               ▼
+                          飞书群 (Webhook)
 ```
 
 ## 数据库表结构
@@ -80,6 +91,12 @@ fomorader/
 | tags | TEXT | JSON 数组字符串 |
 | fetch_at | TEXT | 爬取时间 |
 | created_at | TEXT | 入库时间 |
+| is_favorite | INTEGER | 0/1 收藏状态 |
+
+> **数据保留策略**：系统默认保留最新的 **300 条** 热点数据。但以下内容**永久保留**（豁免清理）：
+> 1. 分数 `total_score >= 7.0`
+> 2. 用户手动收藏 (`is_favorite = 1`)
+> 3. 每日最高分（Daily Max Score）
 
 ### scores（评分结果）
 | 字段 | 类型 | 说明 |
@@ -107,16 +124,22 @@ fomorader/
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | key | TEXT PK | url + ':' + model_version + ':' + rules_version |
-| value | TEXT | JSON 评分结果（包含 platform_score / creator_score / content_score 等用于复用的中间值） |
+| value | TEXT | JSON 评分结果 |
+
+### push_history（推送历史）
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| hotspot_id | TEXT PK | → hotspots.id |
+| pushed_at | TEXT | 推送时间 |
 
 ## 模块职责边界
 | 模块 | 只能做 | 不能做 |
 |------|--------|--------|
-| fetch_rss.py | 爬取→写 JSON |
-| x-collector | 爬取→合并 JSON |
-| seed.ts | 读 JSON→写 hotspots | 触发评分、修改表结构 |
+| fetch_rss.py | 爬取→写 JSON (RSS) |
+| x-collector | 爬取→写 JSON (X) |
+| seed.ts | 读 JSONs→写 hotspots+history | 触发评分、修改表结构 |
 | scorer.ts | 读 hotspots→写 scores+cache | 修改 hotspots |
-| 前端 | 只读数据库 | 写数据库、调 LLM |
+| notifier.ts | 读 scores→写 push_history | 修改 hotspots/scores |
 
 ## 一键刷新命令
 ```bash

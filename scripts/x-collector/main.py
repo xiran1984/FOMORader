@@ -4,7 +4,11 @@ X-Collector Entry Point
 import argparse
 import json
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
+
+# Force UTF-8 output for Windows consoles
+sys.stdout.reconfigure(encoding='utf-8')
 
 # Fix import path to allow running from root or x-collector dir
 sys.path.append(str(Path(__file__).parent))
@@ -47,11 +51,21 @@ def main():
     parser.add_argument("--min-faves", type=int, default=DEFAULT_MIN_FAVES,    help="Min favorites filter")
     parser.add_argument("--min-rt",    type=int, default=DEFAULT_MIN_RETWEETS, help="Min retweets filter")
     parser.add_argument("--out",       type=str, default=OUTPUT_FILE,          help="Output JSON path")
+    parser.add_argument("--days",      type=int, default=None,                 help="Fetch tweets from last N days")
     parser.add_argument("--dry-run",   action="store_true",                    help="Print only, do not write")
     args = parser.parse_args()
 
+    # Calculate since_date (UTC)
+    since_date = None
+    if args.days:
+        # Use UTC time to align with Twitter API behavior
+        # Fetch from (Now - N days)
+        utc_now = datetime.utcnow()
+        since_dt = utc_now - timedelta(days=args.days)
+        since_date = since_dt.strftime("%Y-%m-%d")
+
     # 1. Build Query
-    query = build_query(args.min_faves, args.min_rt)
+    query = build_query(args.min_faves, args.min_rt, since_date)
 
     # 2. Fetch Raw Data
     raw_tweets = fetch_tweets(query, args.max)

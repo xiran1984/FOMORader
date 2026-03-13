@@ -7,6 +7,9 @@
 ![Status](https://img.shields.io/badge/status-Alpha-orange.svg)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
+# 为什么要做这个项目
+受限于推荐算法，国内信息平台的信噪比逐渐降低，信息茧房效应愈发严重；而即便是中文质量相对较高的 X (Twitter)，也面临着噪音泛滥、高价值内容稀缺的问题。因此，我想开发这款“傻瓜式”工具——FOMORader。它能每天自动抓取并筛选高质量信息，定时推送到你的聊天软件，助你以最低的注意力成本，快速获取真正有用的资讯。
+
 ## 🌟 核心特性
 
 - **多源智能采集**:
@@ -21,6 +24,15 @@
     - **Top Rated**: 按分数降序展示高价值内容，一眼识别精华。
     - **交互友好**: 点击标题直达原文，点击作者跳转主页，支持时间线浏览。
     - **响应式设计**: 适配桌面与移动端，随时随地掌握动态。
+### 3. High Score Vault (高分金库)
+位于右侧专栏，自动收录所有 `Total Score ≥ 7.0` 的精华内容。
+- **永久保留**：不受 300 条数据清理限制。
+- **收藏功能**：点击卡片上的 ⭐ 图标可手动收藏，同样享受永久保留特权。
+- **每日状元**：系统自动识别并保留每天分数最高的那一条，哪怕它不足 7 分。
+
+### 4. 自动化任务调度
+    - **每日更新**: 用户设定好推送时间 自动抓取过去 24 小时的 X 平台 AI 讨论。
+    - **每周周刊**: 每周日 08:00 自动聚合过去一周的顶级 RSS 技术博客。
 
 ## 🛠️ 技术栈
 
@@ -89,27 +101,12 @@ npm run score
 npm run dev
 ```
 
-访问 `http://localhost:5173` 查看雷达。
+访问 `http://localhost:5173` 
 
-## 📂 目录结构
+### 5. 连接飞书机器人
 
-```text
-fomorader/
-├── .ai/                # 项目文档与架构设计 (ARCHITECTURE, CHANGELOG, TODO)
-├── data/               # SQLite 数据库和原始 JSON 数据
-├── scripts/            # 数据采集与处理脚本
-│   ├── fetch_rss.py    # RSS 采集 (Python)
-│   ├── x-collector/    # Twitter 采集模块 (Python)
-│   └── seed.ts         # 数据入库脚本 (TypeScript)
-├── server/             # 后端 API (Hono)
-├── services/           # 核心服务
-│   ├── llm.ts          # LLM 接口封装 (评分/去重)
-│   └── scorer.ts       # 评分引擎主逻辑
-├── src/                # React 前端源码
-│   ├── components/     # UI 组件 (ScoreCard, RadarStream)
-│   └── App.tsx         # 主页面
-└── ...配置文件
-```
+将Webhook 地址配置到env文件
+
 
 ## 🤝 贡献
 

@@ -1,16 +1,49 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Hotspot } from '../types';
-import { TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
+import { TrendingUp, RefreshCw, Star, Clock } from 'lucide-react';
 
 interface RadarStreamProps {
   hotspots: Hotspot[];
   title?: string;
   className?: string;
+  onToggleFavorite?: (id: string, newStatus: boolean) => void;
+  // New props for time filter
+  filter24h?: boolean;
+  onToggleFilter?: () => void;
 }
 
-const RadarStream: React.FC<RadarStreamProps> = ({ hotspots, title = 'Radar Stream', className = '' }) => {
-  // Sort by score descending
-  const sortedHotspots = [...hotspots].sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
+const RadarStream: React.FC<RadarStreamProps> = ({ 
+  hotspots, 
+  title = 'Radar Stream', 
+  className = '', 
+  onToggleFavorite,
+  filter24h,
+  onToggleFilter
+}) => {
+  // Sort by score descending (handled by parent mostly, but safety check)
+  const sortedHotspots = [...hotspots]; 
+
+  const handleFavoriteClick = async (e: React.MouseEvent, hotspot: Hotspot) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!onToggleFavorite) return;
+
+    // Optimistic UI update
+    const newStatus = !hotspot.is_favorite;
+    onToggleFavorite(hotspot.id, newStatus);
+
+    try {
+        const res = await fetch(`http://localhost:3000/api/hotspots/${hotspot.id}/favorite`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error('Failed to update favorite');
+    } catch (err) {
+        // Revert on failure
+        onToggleFavorite(hotspot.id, !newStatus);
+        console.error(err);
+    }
+  };
 
   const getAuthorUrl = (hotspot: Hotspot) => {
     // If we have explicit author_url from DB (LLM extracted), use it
@@ -40,9 +73,24 @@ const RadarStream: React.FC<RadarStreamProps> = ({ hotspots, title = 'Radar Stre
           <TrendingUp size={24} className="text-purple-600" />
           {title}
         </h2>
-        <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full font-medium">
-          Live
-        </span>
+        
+        {onToggleFilter ? (
+          <button
+            onClick={onToggleFilter}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+              filter24h 
+                ? 'bg-purple-100 text-purple-700 border border-purple-200' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-transparent'
+            }`}
+          >
+            <Clock size={12} />
+            {filter24h ? 'Last 24h' : 'All Time'}
+          </button>
+        ) : (
+          <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full font-medium">
+            Live
+          </span>
+        )}
       </div>
       
       <div className="flex flex-col gap-3 overflow-y-auto max-h-[80vh]">
@@ -65,9 +113,23 @@ const RadarStream: React.FC<RadarStreamProps> = ({ hotspots, title = 'Radar Stre
                 >
                   {hotspot.title_zh || hotspot.title}
                 </a>
-                <span className="text-xs font-bold bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded shrink-0">
-                  {hotspot.total_score?.toFixed(1)}
-                </span>
+                
+                <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        onClick={(e) => handleFavoriteClick(e, hotspot)}
+                        className={`p-1 rounded-full transition-all ${
+                            hotspot.is_favorite 
+                            ? 'text-yellow-400 hover:text-yellow-500 hover:bg-yellow-50' 
+                            : 'text-gray-300 hover:text-yellow-400 hover:bg-gray-50'
+                        } active:scale-125`}
+                        title={hotspot.is_favorite ? "Remove from favorites" : "Add to favorites"}
+                    >
+                        <Star size={16} fill={hotspot.is_favorite ? "currentColor" : "none"} />
+                    </button>
+                    <span className="text-xs font-bold bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded">
+                    {hotspot.total_score?.toFixed(1)}
+                    </span>
+                </div>
               </div>
               
               <div className="flex items-center justify-between mt-2 text-xs text-gray-500">

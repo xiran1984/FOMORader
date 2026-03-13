@@ -14,8 +14,12 @@ import hashlib
 import json
 import re
 import warnings
+import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+
+# Force UTF-8 output for Windows consoles
+sys.stdout.reconfigure(encoding='utf-8')
 
 import requests
 import feedparser
@@ -327,7 +331,7 @@ def merge_into(existing_path: Path, new_items: list[dict]) -> tuple[list[dict], 
 def main():
     parser = argparse.ArgumentParser(description="FOMORader RSS Fetcher")
     parser.add_argument("--days",      type=int, default=7,                        help="抓取最近 N 天（默认 7）")
-    parser.add_argument("--out",       type=str, default="data/hotspots_raw.json", help="输出路径")
+    parser.add_argument("--out",       type=str, default="data/hotspots_rss.json", help="输出路径")
     parser.add_argument("--dry-run",   action="store_true",                        help="只打印前3条，不写文件")
     parser.add_argument("--no-filter", action="store_true",                        help="跳过质量筛选，收录全部")
     args = parser.parse_args()
