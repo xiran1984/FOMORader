@@ -12,19 +12,40 @@ const WEEKLY_TIME = '0 8 * * 0'; // 8:00 AM Sunday
 async function runCommand(command: string) {
   console.log(`[Scheduler] Running: ${command}`);
   try {
-    const { stdout, stderr } = await execAsync(command);
+    // Explicitly use PowerShell on Windows to handle paths with spaces and environment variables correctly
+    const isWin = process.platform === 'win32';
+    const shell = isWin ? 'powershell' : undefined;
+    
+    const { stdout, stderr } = await execAsync(command, { shell });
     if (stdout) console.log(stdout);
     if (stderr) console.error(stderr);
     console.log(`[Scheduler] Finished: ${command}`);
   } catch (error) {
     console.error(`[Scheduler] Error running ${command}:`, error);
+    throw error; // Re-throw to stop the chain
   }
 }
 
 import { pushFeishuDaily } from '../services/notifier.ts';
 
+// Task Status Management
+export const taskStatus = {
+    state: 'idle', // idle, running, success, error
+    error: null as string | null,
+    lastRun: null as string | null
+};
+
 export async function runDailyTask() {
+    if (taskStatus.state === 'running') {
+        console.log('[Scheduler] Daily task already running, skipping duplicate trigger.');
+        return;
+    }
+
     console.log('[Scheduler] Starting daily fetch (X)...');
+    taskStatus.state = 'running';
+    taskStatus.error = null;
+    taskStatus.lastRun = new Date().toISOString();
+
     try {
         // Fetch X (past 1 day)
         await runCommand('python scripts/x-collector/main.py --days 1');
@@ -34,9 +55,13 @@ export async function runDailyTask() {
         await runCommand('npm run score');
         // Push Notification
         await pushFeishuDaily();
+        
         console.log('[Scheduler] Daily fetch completed.');
-    } catch (e) {
+        taskStatus.state = 'success';
+    } catch (e: any) {
         console.error('[Scheduler] Daily fetch failed:', e);
+        taskStatus.state = 'error';
+        taskStatus.error = e.message || String(e);
     }
 }
 

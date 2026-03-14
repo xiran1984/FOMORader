@@ -34,7 +34,7 @@ const RadarStream: React.FC<RadarStreamProps> = ({
     onToggleFavorite(hotspot.id, newStatus);
 
     try {
-        const res = await fetch(`http://localhost:3000/api/hotspots/${hotspot.id}/favorite`, {
+        const res = await fetch(`http://127.0.0.1:3000/api/hotspots/${hotspot.id}/favorite`, {
             method: 'POST'
         });
         if (!res.ok) throw new Error('Failed to update favorite');

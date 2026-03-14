@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import Database from 'better-sqlite3';
-import { initScheduler, rescheduleDailyTask, getScheduleConfig, runDailyTask } from './scheduler.ts';
+import { initScheduler, rescheduleDailyTask, getScheduleConfig, runDailyTask, taskStatus } from './scheduler.ts';
 
 const app = new Hono();
 
@@ -50,9 +50,20 @@ app.post('/api/config/schedule', async (c) => {
   }
 });
 
+// Get task status
+app.get('/api/status', (c) => {
+  return c.json(taskStatus);
+});
+
+// Trigger daily update (async)
 app.post('/api/trigger/daily', async (c) => {
-  // Manually trigger the daily task immediately
-  runDailyTask(); // Run in background
+  if (taskStatus.state === 'running') {
+    return c.json({ success: false, message: 'Task already running' });
+  }
+  
+  // Fire and forget (but update state immediately inside the function)
+  runDailyTask(); 
+  
   return c.json({ success: true, message: 'Daily task started' });
 });
 

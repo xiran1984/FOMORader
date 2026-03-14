@@ -2,7 +2,9 @@
 import 'dotenv/config';
 import Database from 'better-sqlite3';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
+import HttpsProxyAgent from 'https-proxy-agent';
+import fetch from 'node-fetch'; // Ensure node-fetch is used if global fetch doesn't support agent
 
 // -----------------------------------------------------------------------------
 // 配置
@@ -12,6 +14,20 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const DB_PATH = path.join(PROJECT_ROOT, 'data', 'fomorader.db');
 const FEISHU_WEBHOOK = process.env.FEISHU_WEBHOOK || '';
+const HTTP_PROXY = process.env.HTTP_PROXY || process.env.http_proxy;
+
+// -----------------------------------------------------------------------------
+// 代理配置
+// -----------------------------------------------------------------------------
+const fetchOptions: any = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+};
+
+if (HTTP_PROXY) {
+    console.log(`🔌 Using proxy for Feishu: ${HTTP_PROXY}`);
+    fetchOptions.agent = new HttpsProxyAgent(HTTP_PROXY);
+}
 
 // -----------------------------------------------------------------------------
 // 类型定义
@@ -121,8 +137,7 @@ async function pushToFeishu(payload: any) {
 
   try {
     const res = await fetch(FEISHU_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      ...fetchOptions,
       body: JSON.stringify(payload)
     });
     const data = await res.json();
@@ -193,8 +208,6 @@ async function main() {
 
   db.close();
 }
-
-import { pathToFileURL } from 'url';
 
 // Allow running directly
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

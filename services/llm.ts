@@ -1,6 +1,23 @@
 import 'dotenv/config';
+import { OpenAI } from 'openai';
+import HttpsProxyAgent from 'https-proxy-agent';
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const apiKey = process.env.SILICONFLOW_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || '';
+if (!apiKey) throw new Error('Missing SILICONFLOW_API_KEY (or OPENAI_API_KEY)');
+const baseURL = (process.env.SILICONFLOW_BASE_URL?.trim() || 'https://api.siliconflow.cn/v1').replace(/\/+$/, '');
+const modelName = process.env.SILICONFLOW_MODEL?.trim() || 'Qwen/Qwen2.5-32B-Instruct';
+const timeoutMs = Number(process.env.SILICONFLOW_TIMEOUT_MS || 60000);
+const httpProxy = process.env.HTTP_PROXY || process.env.http_proxy;
+
+const openai = new OpenAI({
+  apiKey,
+  baseURL,
+  httpAgent: httpProxy ? new HttpsProxyAgent(httpProxy) : undefined,
+  timeout: Number.isFinite(timeoutMs) ? timeoutMs : 60000,
+  maxRetries: 3,
+});
 
 export type Hotspot = {
   id: string;
@@ -55,66 +72,20 @@ function truncateByCodepoints(text: string, maxLen: number): string {
   return arr.slice(0, maxLen).join('');
 }
 
-function getConfig(): { apiKey: string; baseURL: string; model: string; timeoutMs: number } {
-  const apiKey = process.env.SILICONFLOW_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || '';
-  if (!apiKey) throw new Error('Missing SILICONFLOW_API_KEY (or OPENAI_API_KEY)');
-  const baseURL = (process.env.SILICONFLOW_BASE_URL?.trim() || 'https://api.siliconflow.cn/v1').replace(/\/+$/, '');
-  const model = process.env.SILICONFLOW_MODEL?.trim() || 'Qwen/Qwen2.5-32B-Instruct';
-  const timeoutMs = Number(process.env.SILICONFLOW_TIMEOUT_MS || 60000);
-  return { apiKey, baseURL, model, timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : 60000 };
-}
-
-async function sleep(ms: number): Promise<void> {
-  await new Promise((r) => setTimeout(r, ms));
-}
-
 async function createJsonChat(
   messages: ChatMessage[],
   temperature: number,
   maxRetries = 3
 ): Promise<any> {
-  const { apiKey, baseURL, model, timeoutMs } = getConfig();
-  let lastErr: unknown;
-  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-    try {
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), timeoutMs);
-      const resp = await fetch(`${baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature,
-          top_p: 0.7,
-          response_format: { type: 'json_object' },
-        }),
-        signal: controller.signal,
-      }).finally(() => clearTimeout(t));
-
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => '');
-        const err: any = new Error(`LLM request failed: ${resp.status} ${resp.statusText} ${text.slice(0, 300)}`);
-        err.status = resp.status;
-        throw err;
-      }
-
-      const data = (await resp.json()) as any;
-      const content = data?.choices?.[0]?.message?.content || '';
-      return JSON.parse(content);
-    } catch (e: any) {
-      lastErr = e;
-      const status = e?.status ?? e?.response?.status;
-      const retryable = status === 429 || (typeof status === 'number' && status >= 500);
-      if (!retryable || attempt === maxRetries) throw e;
-      const backoffMs = 500 * Math.pow(2, attempt);
-      await sleep(backoffMs);
-    }
-  }
-  throw lastErr;
+  const completion = await openai.chat.completions.create({
+    model: modelName,
+    messages: messages as any,
+    temperature,
+    top_p: 0.7,
+    response_format: { type: 'json_object' },
+  });
+  const content = completion.choices[0].message.content || '';
+  return JSON.parse(content);
 }
 
 export async function dedupeHotspot(hotspot: Hotspot, candidates: Candidate[]): Promise<DedupeDecision> {

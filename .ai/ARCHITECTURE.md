@@ -76,7 +76,14 @@ fomorader/
                           飞书群 (Webhook)
 ```
 
-## 数据库表结构
+### 网络配置 (Proxy)
+- **前端 -> 后端**：强制使用 `http://127.0.0.1:3000` 以绕过系统代理拦截。
+- **后端 -> 外部API**：
+  - Python 脚本 (`fetch_rss.py`, `x-collector`)：自动读取系统环境变量 (`HTTP_PROXY`)。
+  - Node.js 服务 (`llm.ts`, `notifier.ts`)：显式使用 `https-proxy-agent` 读取 `.env` 中的 `HTTP_PROXY` 配置。
+
+## 数据库设计 (SQLite)
+`data/fomorader.db` (WAL Mode)
 
 ### hotspots（原始热点）
 | 字段 | 类型 | 说明 |

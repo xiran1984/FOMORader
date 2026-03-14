@@ -24,7 +24,7 @@ function App() {
 
   const fetchHotspots = () => {
     setLoading(true);
-    fetch('http://localhost:3000/api/hotspots?limit=100')
+    fetch('http://127.0.0.1:3000/api/hotspots?limit=100')
       .then(res => res.json())
       .then(data => {
         setHotspots(data.hotspots || []);
@@ -39,7 +39,7 @@ function App() {
   useEffect(() => {
     fetchHotspots();
     // Fetch current schedule config ...
-    fetch('http://localhost:3000/api/config/schedule')
+    fetch('http://127.0.0.1:3000/api/config/schedule')
       .then(res => res.json())
       .then(data => {
         if (data.dailyTime) {
@@ -66,52 +66,55 @@ function App() {
     setTriggering(true);
     setNewDataArrived(false);
     
-    // Store current latest hotspot ID to detect when new data arrives
-    const latestId = hotspots.length > 0 ? hotspots[0].id : null;
-    let interval: NodeJS.Timeout;
-
     try {
-      const res = await fetch('http://localhost:3000/api/trigger/daily', { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to start');
-      
-      // Poll every 5 seconds
-      interval = setInterval(async () => {
+      // 1. Trigger the task (async)
+      const res = await fetch('http://127.0.0.1:3000/api/trigger/daily', { method: 'POST' });
+      if (!res.ok) {
+         throw new Error('Failed to start task');
+      }
+
+      // 2. Poll status
+      const checkStatus = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/hotspots?limit=1');
-            const data = await res.json();
-            const newLatest = data.hotspots && data.hotspots[0];
+            const statusRes = await fetch('http://127.0.0.1:3000/api/status');
+            const status = await statusRes.json();
             
-            // If we found a newer hotspot than before, stop spinning!
-            // Or if user had no data, and now has data
-            if ((!latestId && newLatest) || (newLatest && newLatest.id !== latestId)) {
-                clearInterval(interval);
+            if (status.state === 'success') {
+                // Done!
+                await fetchHotspots();
                 setTriggering(false);
-                fetchHotspots(); // Refresh full list
                 setNewDataArrived(true);
-                setTimeout(() => setNewDataArrived(false), 5000); // Hide success msg after 5s
+                setTimeout(() => setNewDataArrived(false), 5000);
+                return; // Stop polling
             }
-        } catch (e) {
-            console.error(e);
+            
+            if (status.state === 'error') {
+                throw new Error(status.error || 'Unknown error');
+            }
+            
+            // Still running...
+            if (status.state === 'running') {
+                setTimeout(checkStatus, 2000); // Check again in 2s
+            }
+        } catch (e: any) {
+            alert(`❌ Update failed: ${e.message}`);
+            setTriggering(false);
         }
-      }, 5000);
+      };
+      
+      // Start polling
+      checkStatus();
 
-      // Safety timeout 2 mins
-      setTimeout(() => {
-        clearInterval(interval);
-        setTriggering(false);
-      }, 120000);
-
-    } catch (e) {
-      alert('❌ Error starting update');
+    } catch (e: any) {
+      alert(`❌ Update failed: ${e.message}`);
       setTriggering(false);
-      if (interval) clearInterval(interval);
     }
   };
 
   const saveSchedule = async () => {
     setSavingTime(true);
     try {
-      const res = await fetch('http://localhost:3000/api/config/schedule', {
+      const res = await fetch('http://127.0.0.1:3000/api/config/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ time: dailyTime, limit: Number(pushLimit) })

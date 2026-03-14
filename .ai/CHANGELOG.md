@@ -4,7 +4,7 @@
 
 ---
 
-## [v0.6] 2026-03-13
+## [v0.7] 2026-03-14
 ### 新增
 - **High Score Vault (高分金库)**：
   - 前端：三栏布局右侧新增“Score ≥ 7.0”专栏，专门展示高价值内容。
@@ -26,11 +26,19 @@
   - 升级为 `1:2:1` 三栏布局（Latest - Top Rated - Vault）。
   - 将时间筛选器（All Time / Last 24h）移至中间列标题栏，优化交互体验。
   - 统一 Latest Feed 的卡片样式与 RadarStream 一致。
-- **日期显示**：修复 Latest Feed 中因字段错误导致的 "Invalid Date" 问题，统一使用 `published_at`。
+### 修复
+- **代理连接问题**：
+  - 前端：将所有硬编码的 `localhost:3000` 替换为 `127.0.0.1:3000`，以绕过代理软件（Clash/v2ray）对本地流量的拦截。
+  - 后端：在 Node.js 服务 (`llm.ts`, `notifier.ts`) 中引入 `https-proxy-agent`，显式读取 `.env` 中的 `HTTP_PROXY`，解决了 LLM 打分和飞书推送的网络超时问题。
+- **更新流程稳定性**：
+  - 将 `Update Now` 按钮的逻辑从“前端轮询”改为“异步触发 + 状态查询”。
+  - 修复了后端任务执行时的 Fire-and-forget 问题，增加了任务状态管理 (`idle/running/success/error`)。
+  - 修复了 Windows 环境下 `child_process.exec` 的路径兼容性问题（强制使用 PowerShell）。
+- **RULES.md 丢失**：重新创建了项目根目录下的 `RULES.md`，确保评分脚本能正常运行。
 
 ---
 
-## [v0.5] 2026-03-13
+## [v0.6] 2026-03-13
 ### 新增
 - **自动化调度系统**：
   - 引入 `node-schedule` 实现全自动任务流：每日 08:00 (X 抓取) / 每周日 08:00 (RSS 抓取)。

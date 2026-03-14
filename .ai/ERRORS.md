@@ -1,72 +1,60 @@
-# FOMORader 已知问题与解决方案
+# 常见错误与解决方案 (ERRORS.md)
 
-> 遇到新问题先查这里，解决后必须补充记录。
+> 版本：v1.0
+> 最后更新：2026-03-13
 
----
+## 1. Failed to fetch (前端)
 
-## RSS 相关
+**现象**：
+点击 "Update Now" 或刷新页面时，弹出 `Update failed: Failed to fetch` 或控制台报错。
 
-### ❌ Anthropic / The Verge / The Batch RSS 解析失败
-**报错**：`Feed 异常: <unknown>:2:751: not well-formed (invalid token)`
-**原因**：这三个源的 RSS XML 正文中包含 XML 1.0 不允许的控制字符
-**解决**：用 `requests` 先拿原始字节，用正则清洗控制字符后再交给 feedparser
-```python
-raw = re.sub(rb'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', b'', raw)
-feed = feedparser.parse(raw)
-```
-**状态**：✅ 已修复（fetch_rss.py v0.3）
+**原因**：
+系统开启了代理软件（如 Clash、v2rayN），导致浏览器请求 `localhost:3000` 时被拦截或转发。
 
----
+**解决方案**：
 
-### ⚠️ BeautifulSoup MarkupResemblesLocatorWarning
-**报错**：`The input looks more like a filename than HTML or XML`
-**原因**：空字符串传入 BS4 时误判为文件路径
-**解决**：
-```python
-from bs4 import MarkupResemblesLocatorWarning
-import warnings
-warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
-```
-**状态**：✅ 已修复（fetch_rss.py v0.3）
+- 前端代码已强制将 `localhost` 替换为 `127.0.0.1`。
+- 如果仍报错，请检查代理软件的设置，将 `127.0.0.1` 加入不代理列表（Bypass List）。
+- 确保后端服务器已启动 (`npm run server`)。
 
----
+## 2. Error starting update (后端超时/静默失败)
 
-### ⚠️ VentureBeat 返回 0 条
-**原因**：最近7天内无新文章（正常现象），或时区偏差导致时间过滤过严
-**解决**：运行时加 `--days 14` 扩大时间范围
-**状态**：⚠️ 已知，非 bug
+**现象**：
+点击更新后一直显示 "Updating..."，最后静默消失或弹出模糊错误。
 
----
+**原因**：
 
-## X / twitterapi.io 相关
+- 后端任务（Python 脚本或 LLM 打分）执行时间过长，导致前端 HTTP 请求超时。
+- 脚本执行过程中抛出异常（如网络错误），但未被正确捕获和反馈。
 
-### ❌ Apify apidojo/tweet-scraper 通过 API 返回 0 条
-**报错**：`You cannot use the API with the Free Plan`
-**原因**：该 Actor 要求 Apify 付费订阅才能通过 API 调用，免费账号只能网页手动跑
-**解决**：改用 twitterapi.io（$0.15/1000条，按量付费）
-**状态**：✅ 已切换方案
+**解决方案**：
 
----
+- 系统已升级为“异步触发 + 状态轮询”机制。
+- 后端现在会捕获所有子进程的 stderr，并通过 `/api/status` 接口返回具体的错误信息。
+- 如果遇到 `Command failed`，请检查 `.env` 中的代理配置是否正确。
 
-### ❌ .env 中的 token 未被读取（Token: 未找到）
-**原因**：`.env` 文件不在运行脚本的工作目录（项目根目录）
-**解决**：
-1. 确认 `.env` 在项目根目录（与 `package.json` 同级）
-2. 等号两边不加空格，值不加引号：`TWITTERAPI_KEY=apify_xxx`
-3. 临时验证：PowerShell 用 `$env:TWITTERAPI_KEY="xxx"` 直接设置环境变量
-**状态**：✅ 已记录
+## 3. LLM Request Failed (407/500/Timeout)
 
----
+**现象**：
+打分脚本运行缓慢或报错 `LLM request failed`。
 
-## seed.ts 相关
+**原因**：
 
-### ⚠️ 重复运行 seed.ts 产生重复数据
-**原因**：未使用 `ON CONFLICT` 处理
-**解决**：seed.ts 已使用 `INSERT ... ON CONFLICT(url) DO UPDATE`，重复跑安全
-**状态**：✅ 设计已规避
+- Node.js 原生 `fetch` 不支持自动读取系统代理环境变量。
+- 国内网络无法直接连接 OpenAI 或 SiliconFlow API。
 
----
+**解决方案**：
 
-## 待排查
+- 确保 `.env` 文件中配置了正确的 `HTTP_PROXY`（例如 `http://127.0.0.1:7897`）。
+- 系统已集成 `https-proxy-agent`，会自动使用该代理。
 
-> 暂无
+## 4. Better-sqlite3 版本不匹配
+
+**现象**：
+运行 `seed.ts` 或启动服务器时报错 `NODE_MODULE_VERSION 115... requires 137`。
+
+**原因**：
+Node.js 版本升级后，原生 C++ 模块未重新编译。
+
+**解决方案**：
+运行 `npm rebuild better-sqlite3` 或删除 `node_modules` 后重新 `npm install`。
