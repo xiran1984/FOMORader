@@ -248,7 +248,7 @@ async function scoreOne(
          JOIN scores s ON s.hotspot_id = h.id
          WHERE s.model_version = ?
          ORDER BY datetime(h.published_at) DESC
-         LIMIT 200`
+         LIMIT 500`
       )
       .all(modelVersion) as { url: string; title: string; summary: string; published_at: string | null }[];
 

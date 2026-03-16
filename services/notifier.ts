@@ -14,19 +14,37 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const DB_PATH = path.join(PROJECT_ROOT, 'data', 'fomorader.db');
 const FEISHU_WEBHOOK = process.env.FEISHU_WEBHOOK || '';
-const HTTP_PROXY = process.env.HTTP_PROXY || process.env.http_proxy;
+const noProxy = process.env.NO_PROXY || process.env.no_proxy || '';
+const feishuProxy =
+  process.env.FEISHU_PROXY?.trim() ||
+  process.env.HTTP_PROXY ||
+  process.env.HTTPS_PROXY ||
+  process.env.http_proxy ||
+  process.env.https_proxy ||
+  '';
 
 // -----------------------------------------------------------------------------
 // 代理配置
 // -----------------------------------------------------------------------------
 const fetchOptions: any = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
 };
 
-if (HTTP_PROXY) {
-    console.log(`🔌 Using proxy for Feishu: ${HTTP_PROXY}`);
-    fetchOptions.agent = new HttpsProxyAgent(HTTP_PROXY);
+function shouldBypassProxy(targetUrl: string, noProxyList: string): boolean {
+  if (!noProxyList) return false;
+  let host = '';
+  try {
+    host = new URL(targetUrl).hostname;
+  } catch {
+    return false;
+  }
+  const entries = noProxyList
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (entries.length === 0) return false;
+  return entries.some((entry) => host === entry || host.endsWith(`.${entry}`));
 }
 
 // -----------------------------------------------------------------------------
@@ -66,12 +84,16 @@ function buildFeishuCard(items: ScoreRow[]) {
 
   const elements: any[] = [];
 
-  // Top 10 items
   items.slice(0, 10).forEach((item, index) => {
     const title = item.title_zh || item.title;
     const score = item.total_score.toFixed(1);
-    const summary = item.summary_zh || item.summary;
+    let summary = item.summary_zh || item.summary;
     const author = item.author ? ` · @${item.author}` : '';
+    
+    // Truncate summary to ~100 chars to keep it within ~3 lines (plus author/time line = 4 lines total)
+    if (summary.length > 100) {
+        summary = summary.slice(0, 97) + '...';
+    }
     
     // 格式化发布时间: 03/12 14:30
     const pubDate = new Date(item.published_at);
@@ -126,29 +148,62 @@ function buildFeishuCard(items: ScoreRow[]) {
   };
 }
 
+function buildFeishuText(items: ScoreRow[]) {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  const hour = String(now.getHours()).padStart(2, '0');
+  const minute = String(now.getMinutes()).padStart(2, '0');
+  const fullDateStr = `${month}月${day}日 ${hour}:${minute}`;
+  const lines: string[] = [];
+  lines.push(`📡 FOMORader 日报 (${fullDateStr})`);
+  items.slice(0, 10).forEach((item, index) => {
+    const title = (item.title_zh || item.title || '').replace(/\s+/g, ' ').trim();
+    const score = item.total_score.toFixed(1);
+    const shortTitle = title.length > 60 ? `${title.slice(0, 57)}...` : title;
+    lines.push(`${index + 1}. [${score}分] ${shortTitle}`);
+    lines.push(item.url);
+  });
+  return {
+    msg_type: 'text',
+    content: {
+      text: lines.join('\n')
+    }
+  };
+}
+
 // -----------------------------------------------------------------------------
 // 推送逻辑
 // -----------------------------------------------------------------------------
-async function pushToFeishu(payload: any) {
+async function pushToFeishu(payload: any): Promise<boolean> {
   if (!FEISHU_WEBHOOK) {
     console.warn('⚠️ FEISHU_WEBHOOK not configured in .env');
-    return;
+    return false;
   }
 
   try {
+    const useProxy = Boolean(feishuProxy) && !shouldBypassProxy(FEISHU_WEBHOOK, noProxy);
+    const agent = useProxy ? new HttpsProxyAgent(feishuProxy) : undefined;
+    if (useProxy) {
+      console.log(`🔌 Using proxy for Feishu: ${feishuProxy}`);
+    }
     const res = await fetch(FEISHU_WEBHOOK, {
       ...fetchOptions,
+      agent,
       body: JSON.stringify(payload)
     });
     const data = await res.json();
     console.log('Feishu response:', data); // Add log to debug
     if (data.code !== 0) {
       console.error('❌ Feishu push failed:', data);
+      return false;
     } else {
       console.log('✅ Feishu push success!');
+      return true;
     }
   } catch (e) {
     console.error('❌ Feishu network error:', e);
+    return false;
   }
 }
 
@@ -195,16 +250,27 @@ async function main() {
 
   console.log(`✅ Found ${rows.length} items to push.`);
   const card = buildFeishuCard(rows);
-  
-  await pushToFeishu(card);
+  const textPayload = buildFeishuText(rows);
+  const textOnly = process.env.FEISHU_TEXT_ONLY === '1';
 
-  // Record push history
-  const insertHistory = db.prepare(`INSERT OR IGNORE INTO push_history (hotspot_id, pushed_at) VALUES (?, datetime('now'))`);
-  db.transaction(() => {
-    for (const row of rows) {
-      insertHistory.run(row.id);
-    }
-  })();
+  let pushed = false;
+  if (!textOnly) {
+    pushed = await pushToFeishu(card);
+  }
+  if (!pushed) {
+    pushed = await pushToFeishu(textPayload);
+  }
+
+  if (pushed) {
+    const insertHistory = db.prepare(`INSERT OR IGNORE INTO push_history (hotspot_id, pushed_at) VALUES (?, datetime('now'))`);
+    db.transaction(() => {
+      for (const row of rows) {
+        insertHistory.run(row.id);
+      }
+    })();
+  } else {
+    console.warn('⚠️ Feishu push failed, skipped push_history update.');
+  }
 
   db.close();
 }

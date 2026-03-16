@@ -157,9 +157,11 @@ app.get('/api/stats', (c) => {
 });
 
 const port = 3000;
-console.log(`Server is running on port ${port}`);
+const host = process.env.HOST || '127.0.0.1';
+console.log(`Server is running on http://${host}:${port}`);
 
 serve({
   fetch: app.fetch,
-  port
+  port,
+  hostname: host
 });

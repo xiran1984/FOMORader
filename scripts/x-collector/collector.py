@@ -3,7 +3,12 @@ Twitter API Interaction Module
 """
 import sys
 import requests
-from config import API_BASE, API_KEY
+from config import API_BASE, API_KEY, X_PROXY
+
+def resolve_proxies():
+    if X_PROXY:
+        return {"http": X_PROXY, "https": X_PROXY}
+    return None
 
 def fetch_tweets(query: str, max_items: int) -> list[dict]:
     """
@@ -23,6 +28,7 @@ def fetch_tweets(query: str, max_items: int) -> list[dict]:
     print(f"📦 Target: {max_items} items")
     print(f"{'─'*40}")
 
+    proxies = resolve_proxies()
     while len(results) < max_items:
         params = {
             "query": query,
@@ -37,6 +43,7 @@ def fetch_tweets(query: str, max_items: int) -> list[dict]:
                 headers=headers,
                 params=params,
                 timeout=15,
+                proxies=proxies,
             )
         except requests.RequestException as e:
             print(f"❌ Network Error: {e}")

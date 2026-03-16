@@ -6,7 +6,9 @@
     "preview": "vite preview",
     "server": "tsx watch server/index.ts",
     "refresh": "python scripts/fetch_rss.py && python scripts/x-collector/main.py && npx tsx scripts/seed.ts",
-    "score": "npx tsx services/scorer.ts --limit 999999"
+    "score": "npx tsx services/scorer.ts --limit 999999",
+    "selfcheck": "npx tsx scripts/selfcheck.ts",
+    "setup": "npx tsx scripts/setup.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.11",

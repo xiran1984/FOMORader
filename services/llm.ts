@@ -9,7 +9,31 @@ if (!apiKey) throw new Error('Missing SILICONFLOW_API_KEY (or OPENAI_API_KEY)');
 const baseURL = (process.env.SILICONFLOW_BASE_URL?.trim() || 'https://api.siliconflow.cn/v1').replace(/\/+$/, '');
 const modelName = process.env.SILICONFLOW_MODEL?.trim() || 'Qwen/Qwen2.5-32B-Instruct';
 const timeoutMs = Number(process.env.SILICONFLOW_TIMEOUT_MS || 60000);
-const httpProxy = process.env.HTTP_PROXY || process.env.http_proxy;
+const noProxy = process.env.NO_PROXY || process.env.no_proxy || '';
+const llmProxy =
+  process.env.LLM_PROXY?.trim() ||
+  process.env.SILICONFLOW_PROXY?.trim() ||
+  process.env.HTTP_PROXY ||
+  process.env.HTTPS_PROXY ||
+  process.env.http_proxy ||
+  process.env.https_proxy;
+
+function shouldBypassProxy(targetUrl: string, noProxyList: string): boolean {
+  if (!noProxyList) return false;
+  let host = '';
+  try {
+    host = new URL(targetUrl).hostname;
+  } catch {
+    return false;
+  }
+  const entries = noProxyList
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (entries.length === 0) return false;
+  return entries.some((entry) => host === entry || host.endsWith(`.${entry}`));
+}
+const httpProxy = llmProxy && !shouldBypassProxy(baseURL, noProxy) ? llmProxy : '';
 
 const openai = new OpenAI({
   apiKey,

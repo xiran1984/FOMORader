@@ -75,7 +75,26 @@ SILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1
 SILICONFLOW_MODEL=Qwen/Qwen2.5-32B-Instruct
 
 # Twitter API 配置 (可选，用于 X 数据采集)
-TWITTER_API_KEY=your-twitterapi-io-key
+TWITTERAPI_KEY=your-twitterapi-io-key
+
+# Feishu 配置
+FEISHU_WEBHOOK=https://open.feishu.cn/open-apis/bot/v2/hook/xxxxx
+FEISHU_TEXT_ONLY=0
+
+# 分服务代理（可选）
+LLM_PROXY=
+X_PROXY=
+FEISHU_PROXY=
+RSS_PROXY=
+HTTP_PROXY=
+HTTPS_PROXY=
+NO_PROXY=api.twitterapi.io,open.feishu.cn,127.0.0.1,localhost
+```
+
+可选：使用安装向导快速写入配置
+
+```bash
+npm run setup
 ```
 
 ### 3. 数据采集与评分
@@ -106,6 +125,12 @@ npm run dev
 ### 5. 连接飞书机器人
 
 将Webhook 地址配置到env文件
+
+### 6. 自检
+
+```bash
+npm run selfcheck
+```
 
 
 ## 🤝 贡献

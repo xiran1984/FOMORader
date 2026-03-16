@@ -15,6 +15,7 @@ import json
 import re
 import warnings
 import sys
+import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -26,6 +27,15 @@ import feedparser
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
+
+RSS_PROXY = os.getenv("RSS_PROXY", "").strip()
+
+def resolve_proxies():
+    if RSS_PROXY:
+        return {"http": RSS_PROXY, "https": RSS_PROXY}
+    return None
+
+PROXIES = resolve_proxies()
 
 _TEXT_TRANSLATION_TABLE = str.maketrans({
     "\u2028": "\n",
@@ -171,7 +181,7 @@ def extract_tags(title: str, source_name: str) -> list[str]:
 def fetch_raw(url: str) -> bytes | None:
     headers = {"User-Agent": "Mozilla/5.0 (FOMORader RSS Reader)"}
     try:
-        resp = requests.get(url, headers=headers, timeout=10)
+        resp = requests.get(url, headers=headers, timeout=10, proxies=PROXIES)
         resp.raise_for_status()
         raw = resp.content
         # 清洗 XML 1.0 不允许的控制字符
